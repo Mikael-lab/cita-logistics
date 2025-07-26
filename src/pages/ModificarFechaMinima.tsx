@@ -66,6 +66,12 @@ export default function ModificarFechaMinima() {
           proveedor: "Proveedor Industrial SA de CV",
           fechaMinimaActual: "2024-08-15"
         });
+      } else if (searchOC === "123") {
+        setOcDetails({
+          numeroOC: "123",
+          proveedor: "Distribuidora Comercial México",
+          fechaMinimaActual: "2024-08-20"
+        });
       } else {
         setSearchError("No se encontró la Orden de Compra especificada");
         setOcDetails(null);
