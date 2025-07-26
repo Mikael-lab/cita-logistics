@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Calendar, FileText, Truck, BarChart3 } from "lucide-react";
+import { Calendar, FileText, Truck, BarChart3, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -40,7 +40,7 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Card className="shadow-card hover:shadow-corporate transition-shadow duration-300">
               <CardHeader>
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
@@ -58,6 +58,11 @@ const Index = () => {
                   <li>• Asignación de rampas automática</li>
                   <li>• Generación de folios únicos</li>
                 </ul>
+                <div className="mt-4">
+                  <Button asChild variant="outline" size="sm" className="w-full">
+                    <Link to="/agendar-cita">Agendar Cita</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -78,6 +83,11 @@ const Index = () => {
                   <li>• Comentarios y observaciones</li>
                   <li>• Alertas automáticas</li>
                 </ul>
+                <div className="mt-4">
+                  <Button asChild variant="outline" size="sm" className="w-full">
+                    <Link to="/reporte-seguimiento">Ver Reportes</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -98,6 +108,36 @@ const Index = () => {
                   <li>• Exportación de datos</li>
                   <li>• Métricas de rendimiento</li>
                 </ul>
+                <div className="mt-4">
+                  <Button asChild variant="outline" size="sm" className="w-full">
+                    <Link to="/reporte-seguimiento">Acceder</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card hover:shadow-corporate transition-shadow duration-300 border-warning/20">
+              <CardHeader>
+                <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center mb-4">
+                  <Settings className="h-6 w-6 text-warning" />
+                </div>
+                <CardTitle>Modificar Fecha Mínima</CardTitle>
+                <CardDescription>
+                  Módulo de excepción para autorizar recepciones anticipadas
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Solo usuarios autorizados</li>
+                  <li>• Búsqueda por número de OC</li>
+                  <li>• Justificación obligatoria</li>
+                  <li>• Registro de auditoría</li>
+                </ul>
+                <div className="mt-4">
+                  <Button asChild variant="warning" size="sm" className="w-full">
+                    <Link to="/modificar-fecha-minima">Acceder</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
