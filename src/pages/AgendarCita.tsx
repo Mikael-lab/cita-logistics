@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, Trash2, Calendar, Clock, Upload, Download, Plus, X, Package, MapPin, Truck } from "lucide-react";
+import { Search, Trash2, Calendar, Clock, Upload, Download, Plus, X, Package, MapPin, Truck, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +62,8 @@ const AgendarCita = () => {
   const [procesandoArchivo, setProcesandoArchivo] = useState(false);
   const [mostrarDetalles, setMostrarDetalles] = useState(false);
   const [detallesEntrega, setDetallesEntrega] = useState<Record<string, DetalleEntrega>>({});
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [ocEditando, setOcEditando] = useState<string | null>(null);
   const { toast } = useToast();
 
   const buscarOC = () => {
@@ -199,6 +203,36 @@ const AgendarCita = () => {
         [campo]: valor
       }
     }));
+  };
+
+  const abrirModalDetalle = (numeroOC: string) => {
+    setOcEditando(numeroOC);
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    setOcEditando(null);
+  };
+
+  const guardarDetalleModal = () => {
+    if (!ocEditando) return;
+    
+    const detalle = detallesEntrega[ocEditando];
+    if (!detalle?.textoBreve || !detalle?.material || !detalle?.cantidad) {
+      toast({
+        title: "Campos requeridos",
+        description: "Completa los campos obligatorios antes de guardar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Detalles guardados",
+      description: `Información de OC ${ocEditando} actualizada correctamente`,
+    });
+    cerrarModal();
   };
 
   const procesarArchivo = async () => {
@@ -482,23 +516,107 @@ const AgendarCita = () => {
               </div>
             </div>
 
-            {/* Formulario de Detalles de Entrega */}
+            {/* Lista de Movimientos con Modal */}
             {mostrarDetalles && (
               <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
-                    Detalles de Entrega por OC
+                    Movimientos de Entrega
                   </CardTitle>
                   <CardDescription>
-                    Completa la información específica de entrega para cada orden de compra
+                    Completa los detalles de cada movimiento. Campos obligatorios: Texto Breve, Material, Cantidad.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-8">
-                    {carritoOCs.map((oc) => {
-                      const detalle = detallesEntrega[oc.numero] || {
-                        docCompra: oc.numero,
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>OC</TableHead>
+                        <TableHead>Proveedor</TableHead>
+                        <TableHead>Material</TableHead>
+                        <TableHead>Cantidad</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {carritoOCs.map((oc) => {
+                        const detalle = detallesEntrega[oc.numero];
+                        const completo = detalle?.textoBreve && detalle?.material && detalle?.cantidad;
+                        
+                        return (
+                          <TableRow key={oc.numero}>
+                            <TableCell className="font-medium">{oc.numero}</TableCell>
+                            <TableCell>{oc.proveedor}</TableCell>
+                            <TableCell>
+                              {detalle?.material || (
+                                <span className="text-muted-foreground italic">Sin especificar</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {detalle?.cantidad || (
+                                <span className="text-muted-foreground italic">Sin especificar</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={completo ? "default" : "secondary"}>
+                                {completo ? "Completo" : "Pendiente"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => abrirModalDetalle(oc.numero)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+
+                  <div className="flex gap-4 pt-6">
+                    <Button
+                      onClick={() => setMostrarDetalles(false)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={generarFolio}
+                      variant="corporate"
+                      className="flex-1"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Generar Folio de Cita
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Modal de Detalles de Movimiento */}
+            <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Detalles de Movimiento - OC {ocEditando}</DialogTitle>
+                  <DialogDescription>
+                    Complete la información específica para este movimiento de entrega
+                  </DialogDescription>
+                </DialogHeader>
+                
+                {ocEditando && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 py-4">
+                    {(() => {
+                      const detalle = detallesEntrega[ocEditando] || {
+                        docCompra: ocEditando,
                         posicion: "00010",
                         textoBreve: "",
                         material: "",
@@ -515,234 +633,201 @@ const AgendarCita = () => {
                         peso: "",
                         lote: ""
                       };
+
                       return (
-                        <div key={oc.numero} className="border rounded-lg p-6 bg-secondary/30">
-                          <div className="flex items-center gap-2 mb-6">
-                            <Badge variant="outline" className="text-base px-3 py-1">
-                              OC: {oc.numero}
-                            </Badge>
-                            <span className="text-muted-foreground">-</span>
-                            <span className="font-medium">{oc.proveedor}</span>
+                        <>
+                          {/* Documento de Compra */}
+                          <div>
+                            <Label>Doc. Compra</Label>
+                            <Input
+                              value={detalle.docCompra}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'docCompra', e.target.value)}
+                            />
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {/* Documento de Compra */}
-                            <div>
-                              <Label>Doc. Compra</Label>
-                              <Input
-                                value={detalle.docCompra || oc.numero}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'docCompra', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Posición */}
-                            <div>
-                              <Label>Posición</Label>
-                              <Input
-                                value={detalle.posicion || "00010"}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'posicion', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Texto Breve */}
-                            <div className="md:col-span-2">
-                              <Label>Texto Breve *</Label>
-                              <Input
-                                placeholder="Descripción del material/producto"
-                                value={detalle.textoBreve || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'textoBreve', e.target.value)}
-                                className="bg-background"
-                                required
-                              />
-                            </div>
-
-                            {/* Material */}
-                            <div>
-                              <Label>Material *</Label>
-                              <Input
-                                placeholder="Código de material"
-                                value={detalle.material || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'material', e.target.value)}
-                                className="bg-background"
-                                required
-                              />
-                            </div>
-
-                            {/* Centro */}
-                            <div>
-                              <Label>Centro</Label>
-                              <Input
-                                placeholder="Centro de costo"
-                                value={detalle.centro || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'centro', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Indicador */}
-                            <div>
-                              <Label>Indicador</Label>
-                              <Select value={detalle.indicador || "M"} onValueChange={(value) => actualizarDetalle(oc.numero, 'indicador', value)}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="M">M - Manual</SelectItem>
-                                  <SelectItem value="A">A - Automático</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Cantidad */}
-                            <div>
-                              <Label>Cantidad *</Label>
-                              <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={detalle.cantidad || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'cantidad', e.target.value)}
-                                className="bg-background"
-                                required
-                              />
-                            </div>
-
-                            {/* Tipo de Unidad */}
-                            <div>
-                              <Label>Tipo Unidad</Label>
-                              <Select value={detalle.tipoUnidad || "SENCILLO"} onValueChange={(value) => actualizarDetalle(oc.numero, 'tipoUnidad', value)}>
-                                <SelectTrigger>
-                                  <Truck className="mr-2 h-4 w-4" />
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="SENCILLO">Sencillo</SelectItem>
-                                  <SelectItem value="TORTON">Tortón</SelectItem>
-                                  <SelectItem value="TRAILER">Trailer</SelectItem>
-                                  <SelectItem value="RABON">Rabón</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Origen */}
-                            <div>
-                              <Label>Origen</Label>
-                              <Input
-                                placeholder="Ciudad/Ubicación origen"
-                                value={detalle.origen || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'origen', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Destino */}
-                            <div>
-                              <Label>Destino</Label>
-                              <Input
-                                placeholder="Ciudad/Ubicación destino"
-                                value={detalle.destino || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'destino', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Folio Proveedor */}
-                            <div>
-                              <Label>Folio Proveedor</Label>
-                              <Input
-                                placeholder="Referencia del proveedor"
-                                value={detalle.folioProveedor || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'folioProveedor', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Cantidad a Entregar */}
-                            <div>
-                              <Label>Ctd. a Entregar</Label>
-                              <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={detalle.cantidadEntregar || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'cantidadEntregar', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Embalaje */}
-                            <div>
-                              <Label>Embalaje</Label>
-                              <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={detalle.embalaje || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'embalaje', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Cajas */}
-                            <div>
-                              <Label>Cajas</Label>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                value={detalle.cajas || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'cajas', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Peso */}
-                            <div>
-                              <Label>Peso (kg)</Label>
-                              <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={detalle.peso || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'peso', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
-
-                            {/* Lote */}
-                            <div>
-                              <Label>Lote</Label>
-                              <Input
-                                placeholder="Número de lote"
-                                value={detalle.lote || ""}
-                                onChange={(e) => actualizarDetalle(oc.numero, 'lote', e.target.value)}
-                                className="bg-background"
-                              />
-                            </div>
+                          {/* Posición */}
+                          <div>
+                            <Label>Posición</Label>
+                            <Input
+                              value={detalle.posicion}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'posicion', e.target.value)}
+                            />
                           </div>
-                        </div>
+
+                          {/* Texto Breve */}
+                          <div className="md:col-span-2 lg:col-span-3">
+                            <Label>Texto Breve *</Label>
+                            <Input
+                              placeholder="Descripción del material/producto"
+                              value={detalle.textoBreve}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'textoBreve', e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          {/* Material */}
+                          <div>
+                            <Label>Material *</Label>
+                            <Input
+                              placeholder="Código de material"
+                              value={detalle.material}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'material', e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          {/* Centro */}
+                          <div>
+                            <Label>Centro</Label>
+                            <Input
+                              placeholder="Centro de costo"
+                              value={detalle.centro}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'centro', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Indicador */}
+                          <div>
+                            <Label>Indicador</Label>
+                            <Select value={detalle.indicador} onValueChange={(value) => actualizarDetalle(ocEditando, 'indicador', value)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="M">M - Manual</SelectItem>
+                                <SelectItem value="A">A - Automático</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Cantidad */}
+                          <div>
+                            <Label>Cantidad *</Label>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={detalle.cantidad}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'cantidad', e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          {/* Tipo de Unidad */}
+                          <div>
+                            <Label>Tipo Unidad</Label>
+                            <Select value={detalle.tipoUnidad} onValueChange={(value) => actualizarDetalle(ocEditando, 'tipoUnidad', value)}>
+                              <SelectTrigger>
+                                <Truck className="mr-2 h-4 w-4" />
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="SENCILLO">Sencillo</SelectItem>
+                                <SelectItem value="TORTON">Tortón</SelectItem>
+                                <SelectItem value="TRAILER">Trailer</SelectItem>
+                                <SelectItem value="RABON">Rabón</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Origen */}
+                          <div>
+                            <Label>Origen</Label>
+                            <Input
+                              placeholder="Ciudad/Ubicación origen"
+                              value={detalle.origen}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'origen', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Destino */}
+                          <div>
+                            <Label>Destino</Label>
+                            <Input
+                              placeholder="Ciudad/Ubicación destino"
+                              value={detalle.destino}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'destino', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Folio Proveedor */}
+                          <div>
+                            <Label>Folio Proveedor</Label>
+                            <Input
+                              placeholder="Referencia del proveedor"
+                              value={detalle.folioProveedor}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'folioProveedor', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Cantidad a Entregar */}
+                          <div>
+                            <Label>Ctd. a Entregar</Label>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={detalle.cantidadEntregar}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'cantidadEntregar', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Embalaje */}
+                          <div>
+                            <Label>Embalaje</Label>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={detalle.embalaje}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'embalaje', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Cajas */}
+                          <div>
+                            <Label>Cajas</Label>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={detalle.cajas}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'cajas', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Peso */}
+                          <div>
+                            <Label>Peso (kg)</Label>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={detalle.peso}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'peso', e.target.value)}
+                            />
+                          </div>
+
+                          {/* Lote */}
+                          <div>
+                            <Label>Lote</Label>
+                            <Input
+                              placeholder="Número de lote"
+                              value={detalle.lote}
+                              onChange={(e) => actualizarDetalle(ocEditando, 'lote', e.target.value)}
+                            />
+                          </div>
+                        </>
                       );
-                    })}
-
-                    <div className="flex gap-4 pt-6">
-                      <Button
-                        onClick={() => setMostrarDetalles(false)}
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={generarFolio}
-                        variant="corporate"
-                        className="flex-1"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        Generar Folio de Cita
-                      </Button>
-                    </div>
+                    })()}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <Button onClick={cerrarModal} variant="outline" className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button onClick={guardarDetalleModal} variant="corporate" className="flex-1">
+                    Guardar Detalles
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="masiva" className="space-y-6">
