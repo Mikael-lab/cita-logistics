@@ -150,7 +150,7 @@ const ReporteSeguimiento = () => {
   const [folios, setFolios] = useState<Folio[]>(mockFolios);
   const [folioConfirmacion, setFolioConfirmacion] = useState<Folio | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date(2024, 11, 15)); // 15 de diciembre 2024
   const [citaDetalle, setCitaDetalle] = useState<Folio | null>(null);
   const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
   const { toast } = useToast();
