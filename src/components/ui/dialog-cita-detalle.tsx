@@ -1,10 +1,13 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Clock, MapPin, Package, Users } from "lucide-react";
+import { Calendar, Clock, MapPin, Package, Users, Settings, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 interface OC {
   numero: string;
@@ -27,16 +30,22 @@ interface DialogCitaDetalleProps {
   cita: Folio | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEstadoChange?: (folio: string, nuevoEstado: string) => void;
+  onConfirmarArribo?: (folio: string) => void;
 }
 
 const getEstadoBadge = (estado: string) => {
   switch (estado) {
     case "Pendiente":
-      return <Badge variant="secondary">Pendiente</Badge>;
+    case "en espera":
+      return <Badge variant="secondary">En espera</Badge>;
     case "Parcial":
       return <Badge variant="outline" className="bg-warning/10 text-warning border-warning">Parcial</Badge>;
     case "Completo":
-      return <Badge variant="outline" className="bg-success/10 text-success border-success">Completo</Badge>;
+    case "finalizado":
+      return <Badge variant="outline" className="bg-success/10 text-success border-success">Finalizado</Badge>;
+    case "descargando":
+      return <Badge variant="outline" className="bg-info/10 text-info border-info">Descargando</Badge>;
     case "Llegó":
       return <Badge variant="outline" className="bg-success/10 text-success border-success">Llegó</Badge>;
     case "No Llegó":
@@ -46,8 +55,30 @@ const getEstadoBadge = (estado: string) => {
   }
 };
 
-export function DialogCitaDetalle({ cita, open, onOpenChange }: DialogCitaDetalleProps) {
+export function DialogCitaDetalle({ cita, open, onOpenChange, onEstadoChange, onConfirmarArribo }: DialogCitaDetalleProps) {
+  const { toast } = useToast();
+  
   if (!cita) return null;
+
+  const handleCambiarEstado = (nuevoEstado: string) => {
+    if (onEstadoChange) {
+      onEstadoChange(cita.folio, nuevoEstado);
+      toast({
+        title: "Estado actualizado",
+        description: `La cita ${cita.folio} ha sido actualizada a ${nuevoEstado}`,
+      });
+    }
+  };
+
+  const handleConfirmarArribo = () => {
+    if (onConfirmarArribo) {
+      onConfirmarArribo(cita.folio);
+      toast({
+        title: "Arribo confirmado",
+        description: `Se ha confirmado el arribo de la cita ${cita.folio}`,
+      });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,6 +178,34 @@ export function DialogCitaDetalle({ cita, open, onOpenChange }: DialogCitaDetall
               </div>
             </CardContent>
           </Card>
+          
+          {/* Botones de acción */}
+          <div className="flex gap-3 pt-4 border-t">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Cambiar Estado
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleCambiarEstado("en espera")}>
+                  En espera
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCambiarEstado("descargando")}>
+                  Descargando
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCambiarEstado("finalizado")}>
+                  Finalizado
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button onClick={handleConfirmarArribo} className="flex items-center gap-2">
+              <Check className="h-4 w-4" />
+              Confirmar Arribo
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
