@@ -10,7 +10,8 @@ import {
   Check, 
   X,
   Filter,
-  RotateCcw
+  RotateCcw,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -290,7 +291,7 @@ const ReporteSeguimiento = () => {
 
         {/* Tabs de Vistas */}
         <Tabs defaultValue="folios" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="folios" className="text-base py-3">
               <FileText className="mr-2 h-4 w-4" />
               Vista por Folio
@@ -298,6 +299,10 @@ const ReporteSeguimiento = () => {
             <TabsTrigger value="ocs" className="text-base py-3">
               <Search className="mr-2 h-4 w-4" />
               Vista por OC
+            </TabsTrigger>
+            <TabsTrigger value="hora" className="text-base py-3">
+              <Clock className="mr-2 h-4 w-4" />
+              Vista por Hora
             </TabsTrigger>
           </TabsList>
 
@@ -392,6 +397,86 @@ const ReporteSeguimiento = () => {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="hora" className="space-y-4">
+            <Card className="shadow-card">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-primary mb-4">Citas Programadas por Hora</h3>
+                <div className="space-y-6">
+                  {/* Agrupar citas por fecha y hora */}
+                  {Object.entries(
+                    folios.reduce((acc, folio) => {
+                      const fechaKey = format(folio.fechaCita, "yyyy-MM-dd");
+                      if (!acc[fechaKey]) acc[fechaKey] = {};
+                      
+                      const horaInicio = folio.horario.split(" - ")[0];
+                      if (!acc[fechaKey][horaInicio]) acc[fechaKey][horaInicio] = [];
+                      acc[fechaKey][horaInicio].push(folio);
+                      
+                      return acc;
+                    }, {} as Record<string, Record<string, Folio[]>>)
+                  )
+                    .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+                    .map(([fecha, citasPorHora]) => (
+                      <div key={fecha} className="border rounded-lg p-4 bg-muted/20">
+                        <h4 className="font-semibold text-lg mb-4 text-primary">
+                          {format(new Date(fecha), "EEEE, dd/MM/yyyy", { locale: es })}
+                        </h4>
+                        <div className="grid gap-4">
+                          {Object.entries(citasPorHora)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([hora, citas]) => (
+                              <div key={hora} className="border-l-4 border-primary/30 pl-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Clock className="h-4 w-4 text-primary" />
+                                  <span className="font-medium text-base">{hora}</span>
+                                  <Badge variant="outline" className="ml-2">
+                                    {citas.length} cita{citas.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                </div>
+                                <div className="space-y-2">
+                                  {citas.map((cita) => (
+                                    <div
+                                      key={cita.folio}
+                                      className="bg-background border rounded-lg p-3 hover:shadow-md transition-shadow"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-3 mb-1">
+                                            <span className="font-medium text-primary">{cita.folio}</span>
+                                            <span className="text-sm text-muted-foreground">{cita.rampa}</span>
+                                            {getEstadoBadge(cita.estadoGeneral)}
+                                          </div>
+                                          <p className="text-sm text-muted-foreground mb-1">
+                                            Horario: {cita.horario}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground">
+                                            Proveedores: {cita.proveedores.join(", ")}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            OCs: {cita.ocs.map(oc => oc.numero).join(", ")}
+                                          </p>
+                                        </div>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => abrirConfirmacion(cita)}
+                                        >
+                                          Confirmar
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </CardContent>
             </Card>
