@@ -1,28 +1,36 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
+  CalendarDays, 
   Search, 
-  Calendar, 
-  FileText, 
+  Filter, 
   ChevronDown, 
   ChevronRight, 
+  Eye, 
+  MapPin, 
+  Users, 
+  Calendar, 
+  Clock, 
   Check, 
-  X,
-  Filter,
-  RotateCcw,
-  Clock
+  X, 
+  Package, 
+  Settings,
+  FileText,
+  RotateCcw
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DialogCitaDetalle } from "@/components/ui/dialog-cita-detalle";
@@ -274,6 +282,20 @@ const ReporteSeguimiento = () => {
   const abrirDetalleCita = (cita: Folio) => {
     setCitaDetalle(cita);
     setModalDetalleAbierto(true);
+  };
+
+  const cambiarEstadoCita = (folio: string, nuevoEstado: string) => {
+    setFolios(folios.map(f =>
+      f.folio === folio ? { ...f, estadoGeneral: nuevoEstado as "Pendiente" | "Parcial" | "Completo" } : f
+    ));
+    toast({
+      title: "Estado actualizado",
+      description: `La cita ${folio} ha sido actualizada a ${nuevoEstado}`,
+    });
+  };
+
+  const confirmarArriboCita = (folio: string) => {
+    abrirConfirmacion(folios.find(f => f.folio === folio)!);
   };
 
   return (
@@ -584,19 +606,50 @@ const ReporteSeguimiento = () => {
                             </div>
                             
                             {esOcupado && citaEnHorario && (
-                              <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                  <p className="font-medium text-primary">{citaEnHorario.folio}</p>
-                                  <p className="text-sm text-muted-foreground">{citaEnHorario.rampa}</p>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => abrirDetalleCita(citaEnHorario)}
-                                >
-                                  Ver Detalles
-                                </Button>
-                              </div>
+                               <div className="flex items-center gap-3">
+                                 <div className="text-right">
+                                   <p className="font-medium text-primary">{citaEnHorario.folio}</p>
+                                   <p className="text-sm text-muted-foreground">{citaEnHorario.rampa}</p>
+                                 </div>
+                                 <div className="flex items-center gap-2">
+                                   <DropdownMenu>
+                                     <DropdownMenuTrigger asChild>
+                                       <Button variant="outline" size="sm">
+                                         <Settings className="h-4 w-4 mr-1" />
+                                         Estado
+                                       </Button>
+                                     </DropdownMenuTrigger>
+                                     <DropdownMenuContent>
+                                       <DropdownMenuItem onClick={() => cambiarEstadoCita(citaEnHorario.folio, "en espera")}>
+                                         En espera
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => cambiarEstadoCita(citaEnHorario.folio, "descargando")}>
+                                         Descargando
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => cambiarEstadoCita(citaEnHorario.folio, "finalizado")}>
+                                         Finalizado
+                                       </DropdownMenuItem>
+                                     </DropdownMenuContent>
+                                   </DropdownMenu>
+                                   
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => confirmarArriboCita(citaEnHorario.folio)}
+                                   >
+                                     <Check className="h-4 w-4 mr-1" />
+                                     Confirmar Arribo
+                                   </Button>
+                                   
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => abrirDetalleCita(citaEnHorario)}
+                                   >
+                                     Ver Detalles
+                                   </Button>
+                                 </div>
+                               </div>
                             )}
                           </div>
                           
@@ -706,6 +759,8 @@ const ReporteSeguimiento = () => {
           cita={citaDetalle}
           open={modalDetalleAbierto}
           onOpenChange={setModalDetalleAbierto}
+          onEstadoChange={cambiarEstadoCita}
+          onConfirmarArribo={confirmarArriboCita}
         />
       </div>
     </div>
