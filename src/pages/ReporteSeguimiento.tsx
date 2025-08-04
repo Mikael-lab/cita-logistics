@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { DialogCitaDetalle } from "@/components/ui/dialog-cita-detalle";
 
 interface OC {
   numero: string;
@@ -59,7 +60,7 @@ const mockFolios: Folio[] = [
   },
   {
     folio: "FC-123457",
-    fechaCita: new Date(2024, 11, 16),
+    fechaCita: new Date(2024, 11, 15),
     horario: "14:00 - 16:00",
     rampa: "Rampa 02",
     proveedores: ["Comercial 123"],
@@ -68,6 +69,77 @@ const mockFolios: Folio[] = [
       { numero: "80012347", proveedor: "Comercial 123", estadoRecibo: "Llegó", comentarios: "Entrega completa" },
     ]
   },
+  {
+    folio: "FC-123458",
+    fechaCita: new Date(2024, 11, 15),
+    horario: "08:00 - 10:00",
+    rampa: "Rampa 03",
+    proveedores: ["Suministros Delta", "Logística Omega"],
+    estadoGeneral: "Parcial",
+    ocs: [
+      { numero: "80012348", proveedor: "Suministros Delta", estadoRecibo: "Llegó", comentarios: "Primera entrega completada" },
+      { numero: "80012349", proveedor: "Logística Omega", estadoRecibo: "Pendiente" },
+    ]
+  },
+  {
+    folio: "FC-123459",
+    fechaCita: new Date(2024, 11, 15),
+    horario: "11:00 - 13:00",
+    rampa: "Rampa 01",
+    proveedores: ["Transportes Beta"],
+    estadoGeneral: "Pendiente",
+    ocs: [
+      { numero: "80012350", proveedor: "Transportes Beta", estadoRecibo: "Pendiente" },
+      { numero: "80012351", proveedor: "Transportes Beta", estadoRecibo: "Pendiente" },
+    ]
+  },
+  {
+    folio: "FC-123460",
+    fechaCita: new Date(2024, 11, 15),
+    horario: "16:00 - 18:00",
+    rampa: "Rampa 04",
+    proveedores: ["Importadora Gamma", "Distribuciones Alpha"],
+    estadoGeneral: "Pendiente",
+    ocs: [
+      { numero: "80012352", proveedor: "Importadora Gamma", estadoRecibo: "Pendiente" },
+      { numero: "80012353", proveedor: "Distribuciones Alpha", estadoRecibo: "Pendiente" },
+      { numero: "80012354", proveedor: "Importadora Gamma", estadoRecibo: "Pendiente" },
+    ]
+  },
+  {
+    folio: "FC-123461",
+    fechaCita: new Date(2024, 11, 15),
+    horario: "10:00 - 12:00",
+    rampa: "Rampa 02",
+    proveedores: ["Proveeduría Central"],
+    estadoGeneral: "Completo",
+    ocs: [
+      { numero: "80012355", proveedor: "Proveeduría Central", estadoRecibo: "Llegó", comentarios: "Entrega sin novedad" },
+    ]
+  },
+  {
+    folio: "FC-123462",
+    fechaCita: new Date(2024, 11, 16),
+    horario: "09:00 - 11:00",
+    rampa: "Rampa 01",
+    proveedores: ["Logistics Express"],
+    estadoGeneral: "Pendiente",
+    ocs: [
+      { numero: "80012356", proveedor: "Logistics Express", estadoRecibo: "Pendiente" },
+    ]
+  },
+  {
+    folio: "FC-123463",
+    fechaCita: new Date(2024, 11, 16),
+    horario: "13:00 - 15:00",
+    rampa: "Rampa 03",
+    proveedores: ["Carga Pesada S.A.", "Transporte Rápido"],
+    estadoGeneral: "Parcial",
+    ocs: [
+      { numero: "80012357", proveedor: "Carga Pesada S.A.", estadoRecibo: "Llegó", comentarios: "Mercancía en perfectas condiciones" },
+      { numero: "80012358", proveedor: "Transporte Rápido", estadoRecibo: "No Llegó", comentarios: "Retraso por tráfico" },
+    ]
+  }
 ];
 
 const ReporteSeguimiento = () => {
@@ -79,6 +151,8 @@ const ReporteSeguimiento = () => {
   const [folioConfirmacion, setFolioConfirmacion] = useState<Folio | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
+  const [citaDetalle, setCitaDetalle] = useState<Folio | null>(null);
+  const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
   const { toast } = useToast();
 
   const aplicarFiltros = () => {
@@ -195,6 +269,11 @@ const ReporteSeguimiento = () => {
       const horaInicio = cita.horario.split(" - ")[0];
       return horaInicio === hora;
     });
+  };
+
+  const abrirDetalleCita = (cita: Folio) => {
+    setCitaDetalle(cita);
+    setModalDetalleAbierto(true);
   };
 
   return (
@@ -513,7 +592,7 @@ const ReporteSeguimiento = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => abrirConfirmacion(citaEnHorario)}
+                                  onClick={() => abrirDetalleCita(citaEnHorario)}
                                 >
                                   Ver Detalles
                                 </Button>
@@ -621,6 +700,13 @@ const ReporteSeguimiento = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Modal de Detalle de Cita */}
+        <DialogCitaDetalle 
+          cita={citaDetalle}
+          open={modalDetalleAbierto}
+          onOpenChange={setModalDetalleAbierto}
+        />
       </div>
     </div>
   );
