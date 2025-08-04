@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, Trash2, Calendar, Clock, Upload, Download, Plus, X } from "lucide-react";
+import { Search, Trash2, Calendar, Clock, Upload, Download, Plus, X, Package, MapPin, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,25 @@ interface OC {
   proveedor: string;
   fechaMinima: Date;
   selected?: boolean;
+}
+
+interface DetalleEntrega {
+  docCompra: string;
+  posicion: string;
+  textoBreve: string;
+  material: string;
+  centro: string;
+  indicador: string;
+  cantidad: string;
+  tipoUnidad: string;
+  origen: string;
+  destino: string;
+  folioProveedor: string;
+  cantidadEntregar: string;
+  embalaje: string;
+  cajas: string;
+  peso: string;
+  lote: string;
 }
 
 const mockOCs: OC[] = [
@@ -38,6 +58,8 @@ const AgendarCita = () => {
   const [rampaAsignada, setRampaAsignada] = useState("");
   const [archivoSubido, setArchivoSubido] = useState<File | null>(null);
   const [procesandoArchivo, setProcesandoArchivo] = useState(false);
+  const [mostrarDetalles, setMostrarDetalles] = useState(false);
+  const [detallesEntrega, setDetallesEntrega] = useState<Record<string, DetalleEntrega>>({});
   const { toast } = useToast();
 
   const buscarOC = () => {
@@ -86,11 +108,11 @@ const AgendarCita = () => {
     });
   };
 
-  const generarFolio = () => {
+  const abrirDetallesEntrega = () => {
     if (carritoOCs.length === 0) {
       toast({
         title: "Error",
-        description: "Debes agregar al menos una OC para generar la cita",
+        description: "Debes agregar al menos una OC para continuar",
         variant: "destructive",
       });
       return;
@@ -100,6 +122,50 @@ const AgendarCita = () => {
       toast({
         title: "Campos incompletos",
         description: "Completa todos los detalles de la cita",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Inicializar detalles para cada OC si no existen
+    const nuevosDetalles = { ...detallesEntrega };
+    carritoOCs.forEach(oc => {
+      if (!nuevosDetalles[oc.numero]) {
+        nuevosDetalles[oc.numero] = {
+          docCompra: oc.numero,
+          posicion: "00010",
+          textoBreve: "",
+          material: "",
+          centro: "",
+          indicador: "M",
+          cantidad: "",
+          tipoUnidad: "SENCILLO",
+          origen: "",
+          destino: "",
+          folioProveedor: "",
+          cantidadEntregar: "",
+          embalaje: "",
+          cajas: "",
+          peso: "",
+          lote: ""
+        };
+      }
+    });
+    setDetallesEntrega(nuevosDetalles);
+    setMostrarDetalles(true);
+  };
+
+  const generarFolio = () => {
+    // Validar que todos los detalles estén completos
+    const detallesIncompletos = carritoOCs.some(oc => {
+      const detalle = detallesEntrega[oc.numero];
+      return !detalle || !detalle.textoBreve || !detalle.material || !detalle.cantidad;
+    });
+
+    if (detallesIncompletos) {
+      toast({
+        title: "Detalles incompletos",
+        description: "Completa la información de entrega para todas las OCs",
         variant: "destructive",
       });
       return;
@@ -121,6 +187,18 @@ const AgendarCita = () => {
     setRampaAsignada("");
     setResultadosOC([]);
     setSearchOC("");
+    setMostrarDetalles(false);
+    setDetallesEntrega({});
+  };
+
+  const actualizarDetalle = (numeroOC: string, campo: keyof DetalleEntrega, valor: string) => {
+    setDetallesEntrega(prev => ({
+      ...prev,
+      [numeroOC]: {
+        ...prev[numeroOC],
+        [campo]: valor
+      }
+    }));
   };
 
   const procesarArchivo = async () => {
@@ -380,18 +458,291 @@ const AgendarCita = () => {
                       </Select>
                     </div>
 
-                    <Button 
-                      onClick={generarFolio} 
-                      className="w-full"
-                      variant="corporate"
-                      disabled={carritoOCs.length === 0 || !fechaCita || !horarioInicio || !horarioFin || !rampaAsignada}
-                    >
-                      Generar Folio de Cita
-                    </Button>
+                    {!mostrarDetalles ? (
+                      <Button 
+                        onClick={abrirDetallesEntrega} 
+                        className="w-full"
+                        variant="corporate"
+                        disabled={carritoOCs.length === 0 || !fechaCita || !horarioInicio || !horarioFin || !rampaAsignada}
+                      >
+                        <Package className="mr-2 h-4 w-4" />
+                        Continuar con Detalles de Entrega
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => setMostrarDetalles(false)}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Volver a Detalles de Cita
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
             </div>
+
+            {/* Formulario de Detalles de Entrega */}
+            {mostrarDetalles && (
+              <Card className="shadow-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Detalles de Entrega por OC
+                  </CardTitle>
+                  <CardDescription>
+                    Completa la información específica de entrega para cada orden de compra
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-8">
+                    {carritoOCs.map((oc) => {
+                      const detalle = detallesEntrega[oc.numero] || {
+                        docCompra: oc.numero,
+                        posicion: "00010",
+                        textoBreve: "",
+                        material: "",
+                        centro: "",
+                        indicador: "M",
+                        cantidad: "",
+                        tipoUnidad: "SENCILLO",
+                        origen: "",
+                        destino: "",
+                        folioProveedor: "",
+                        cantidadEntregar: "",
+                        embalaje: "",
+                        cajas: "",
+                        peso: "",
+                        lote: ""
+                      };
+                      return (
+                        <div key={oc.numero} className="border rounded-lg p-6 bg-secondary/30">
+                          <div className="flex items-center gap-2 mb-6">
+                            <Badge variant="outline" className="text-base px-3 py-1">
+                              OC: {oc.numero}
+                            </Badge>
+                            <span className="text-muted-foreground">-</span>
+                            <span className="font-medium">{oc.proveedor}</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {/* Documento de Compra */}
+                            <div>
+                              <Label>Doc. Compra</Label>
+                              <Input
+                                value={detalle.docCompra || oc.numero}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'docCompra', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Posición */}
+                            <div>
+                              <Label>Posición</Label>
+                              <Input
+                                value={detalle.posicion || "00010"}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'posicion', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Texto Breve */}
+                            <div className="md:col-span-2">
+                              <Label>Texto Breve *</Label>
+                              <Input
+                                placeholder="Descripción del material/producto"
+                                value={detalle.textoBreve || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'textoBreve', e.target.value)}
+                                className="bg-background"
+                                required
+                              />
+                            </div>
+
+                            {/* Material */}
+                            <div>
+                              <Label>Material *</Label>
+                              <Input
+                                placeholder="Código de material"
+                                value={detalle.material || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'material', e.target.value)}
+                                className="bg-background"
+                                required
+                              />
+                            </div>
+
+                            {/* Centro */}
+                            <div>
+                              <Label>Centro</Label>
+                              <Input
+                                placeholder="Centro de costo"
+                                value={detalle.centro || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'centro', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Indicador */}
+                            <div>
+                              <Label>Indicador</Label>
+                              <Select value={detalle.indicador || "M"} onValueChange={(value) => actualizarDetalle(oc.numero, 'indicador', value)}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="M">M - Manual</SelectItem>
+                                  <SelectItem value="A">A - Automático</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Cantidad */}
+                            <div>
+                              <Label>Cantidad *</Label>
+                              <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={detalle.cantidad || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'cantidad', e.target.value)}
+                                className="bg-background"
+                                required
+                              />
+                            </div>
+
+                            {/* Tipo de Unidad */}
+                            <div>
+                              <Label>Tipo Unidad</Label>
+                              <Select value={detalle.tipoUnidad || "SENCILLO"} onValueChange={(value) => actualizarDetalle(oc.numero, 'tipoUnidad', value)}>
+                                <SelectTrigger>
+                                  <Truck className="mr-2 h-4 w-4" />
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="SENCILLO">Sencillo</SelectItem>
+                                  <SelectItem value="TORTON">Tortón</SelectItem>
+                                  <SelectItem value="TRAILER">Trailer</SelectItem>
+                                  <SelectItem value="RABON">Rabón</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Origen */}
+                            <div>
+                              <Label>Origen</Label>
+                              <Input
+                                placeholder="Ciudad/Ubicación origen"
+                                value={detalle.origen || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'origen', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Destino */}
+                            <div>
+                              <Label>Destino</Label>
+                              <Input
+                                placeholder="Ciudad/Ubicación destino"
+                                value={detalle.destino || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'destino', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Folio Proveedor */}
+                            <div>
+                              <Label>Folio Proveedor</Label>
+                              <Input
+                                placeholder="Referencia del proveedor"
+                                value={detalle.folioProveedor || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'folioProveedor', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Cantidad a Entregar */}
+                            <div>
+                              <Label>Ctd. a Entregar</Label>
+                              <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={detalle.cantidadEntregar || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'cantidadEntregar', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Embalaje */}
+                            <div>
+                              <Label>Embalaje</Label>
+                              <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={detalle.embalaje || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'embalaje', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Cajas */}
+                            <div>
+                              <Label>Cajas</Label>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={detalle.cajas || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'cajas', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Peso */}
+                            <div>
+                              <Label>Peso (kg)</Label>
+                              <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={detalle.peso || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'peso', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+
+                            {/* Lote */}
+                            <div>
+                              <Label>Lote</Label>
+                              <Input
+                                placeholder="Número de lote"
+                                value={detalle.lote || ""}
+                                onChange={(e) => actualizarDetalle(oc.numero, 'lote', e.target.value)}
+                                className="bg-background"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex gap-4 pt-6">
+                      <Button
+                        onClick={() => setMostrarDetalles(false)}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={generarFolio}
+                        variant="corporate"
+                        className="flex-1"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Generar Folio de Cita
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="masiva" className="space-y-6">
