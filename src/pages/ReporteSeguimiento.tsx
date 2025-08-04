@@ -78,6 +78,7 @@ const ReporteSeguimiento = () => {
   const [folios, setFolios] = useState<Folio[]>(mockFolios);
   const [folioConfirmacion, setFolioConfirmacion] = useState<Folio | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
   const { toast } = useToast();
 
   const aplicarFiltros = () => {
@@ -175,6 +176,25 @@ const ReporteSeguimiento = () => {
       default:
         return <Badge variant="secondary">{estado}</Badge>;
     }
+  };
+
+  // Horarios disponibles del día (8:00 AM - 6:00 PM)
+  const horariosDelDia = [
+    "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", 
+    "14:00", "15:00", "16:00", "17:00", "18:00"
+  ];
+
+  const obtenerCitasPorHorario = (fecha: Date) => {
+    return folios.filter(folio => 
+      format(folio.fechaCita, "yyyy-MM-dd") === format(fecha, "yyyy-MM-dd")
+    );
+  };
+
+  const obtenerCitaEnHorario = (hora: string, citasDelDia: Folio[]) => {
+    return citasDelDia.find(cita => {
+      const horaInicio = cita.horario.split(" - ")[0];
+      return horaInicio === hora;
+    });
   };
 
   return (
@@ -405,78 +425,128 @@ const ReporteSeguimiento = () => {
           <TabsContent value="hora" className="space-y-4">
             <Card className="shadow-card">
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-primary mb-4">Citas Programadas por Hora</h3>
-                <div className="space-y-6">
-                  {/* Agrupar citas por fecha y hora */}
-                  {Object.entries(
-                    folios.reduce((acc, folio) => {
-                      const fechaKey = format(folio.fechaCita, "yyyy-MM-dd");
-                      if (!acc[fechaKey]) acc[fechaKey] = {};
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-primary">Horarios del Día</h3>
+                  <div className="flex items-center gap-4">
+                    <Label>Seleccionar fecha:</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[200px] justify-start text-left font-normal"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {format(fechaSeleccionada, "dd/MM/yyyy", { locale: es })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={fechaSeleccionada}
+                          onSelect={(date) => date && setFechaSeleccionada(date)}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <h4 className="font-medium text-base mb-2">
+                    {format(fechaSeleccionada, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es })}
+                  </h4>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-success/20 border-2 border-success rounded"></div>
+                      <span>Ocupado</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-muted border-2 border-muted-foreground/30 rounded"></div>
+                      <span>Disponible</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3">
+                  {(() => {
+                    const citasDelDia = obtenerCitasPorHorario(fechaSeleccionada);
+                    return horariosDelDia.map((hora) => {
+                      const citaEnHorario = obtenerCitaEnHorario(hora, citasDelDia);
+                      const esOcupado = !!citaEnHorario;
                       
-                      const horaInicio = folio.horario.split(" - ")[0];
-                      if (!acc[fechaKey][horaInicio]) acc[fechaKey][horaInicio] = [];
-                      acc[fechaKey][horaInicio].push(folio);
-                      
-                      return acc;
-                    }, {} as Record<string, Record<string, Folio[]>>)
-                  )
-                    .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-                    .map(([fecha, citasPorHora]) => (
-                      <div key={fecha} className="border rounded-lg p-4 bg-muted/20">
-                        <h4 className="font-semibold text-lg mb-4 text-primary">
-                          {format(new Date(fecha), "EEEE, dd/MM/yyyy", { locale: es })}
-                        </h4>
-                        <div className="grid gap-4">
-                          {Object.entries(citasPorHora)
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([hora, citas]) => (
-                              <div key={hora} className="border-l-4 border-primary/30 pl-4">
-                                <div className="flex items-center gap-2 mb-3">
-                                  <Clock className="h-4 w-4 text-primary" />
-                                  <span className="font-medium text-base">{hora}</span>
-                                  <Badge variant="outline" className="ml-2">
-                                    {citas.length} cita{citas.length !== 1 ? 's' : ''}
-                                  </Badge>
+                      return (
+                        <div
+                          key={hora}
+                          className={cn(
+                            "border-2 rounded-lg p-4 transition-all",
+                            esOcupado 
+                              ? "bg-success/10 border-success/30" 
+                              : "bg-muted/30 border-muted-foreground/20 hover:border-muted-foreground/40"
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-primary" />
+                                <span className="font-medium text-base">{hora}</span>
+                              </div>
+                              {esOcupado ? (
+                                <Badge variant="outline" className="bg-success/10 text-success border-success">
+                                  Ocupado
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                  Disponible
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {esOcupado && citaEnHorario && (
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <p className="font-medium text-primary">{citaEnHorario.folio}</p>
+                                  <p className="text-sm text-muted-foreground">{citaEnHorario.rampa}</p>
                                 </div>
-                                <div className="space-y-2">
-                                  {citas.map((cita) => (
-                                    <div
-                                      key={cita.folio}
-                                      className="bg-background border rounded-lg p-3 hover:shadow-md transition-shadow"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-3 mb-1">
-                                            <span className="font-medium text-primary">{cita.folio}</span>
-                                            <span className="text-sm text-muted-foreground">{cita.rampa}</span>
-                                            {getEstadoBadge(cita.estadoGeneral)}
-                                          </div>
-                                          <p className="text-sm text-muted-foreground mb-1">
-                                            Horario: {cita.horario}
-                                          </p>
-                                          <p className="text-sm text-muted-foreground">
-                                            Proveedores: {cita.proveedores.join(", ")}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground mt-1">
-                                            OCs: {cita.ocs.map(oc => oc.numero).join(", ")}
-                                          </p>
-                                        </div>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => abrirConfirmacion(cita)}
-                                        >
-                                          Confirmar
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => abrirConfirmacion(citaEnHorario)}
+                                >
+                                  Ver Detalles
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {esOcupado && citaEnHorario && (
+                            <div className="mt-3 pt-3 border-t border-success/20">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Horario completo:</p>
+                                  <p className="font-medium">{citaEnHorario.horario}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Estado:</p>
+                                  {getEstadoBadge(citaEnHorario.estadoGeneral)}
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-muted-foreground">Proveedores:</p>
+                                  <p className="font-medium">{citaEnHorario.proveedores.join(", ")}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-muted-foreground">OCs ({citaEnHorario.ocs.length}):</p>
+                                  <p className="font-medium">{citaEnHorario.ocs.map(oc => oc.numero).join(", ")}</p>
                                 </div>
                               </div>
-                            ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    });
+                  })()}
                 </div>
               </CardContent>
             </Card>
